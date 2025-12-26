@@ -66,10 +66,17 @@ const routes: Array<RouteRecordRaw> = [
                 name: 'ToolGenerator',
                 component: () => import('@/views/tool/generator/index.vue'),
                 meta: { title: '代码生成', requiresAuth: true }
+            },
+            {
+                path: 'demo/table',
+                name: 'DemoTable',
+                component: () => import('@/views/demo/table/index.vue'),
+                meta: { title: '复杂表格', requiresAuth: true }
             }
         ]
     }
 ];
+
 
 const router = createRouter({
     history: createWebHistory(),

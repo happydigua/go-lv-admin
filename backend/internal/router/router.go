@@ -122,6 +122,16 @@ func InitRouter(r *gin.Engine) {
 			generatorGroup.POST("preview", generatorApi.PreviewCode)
 			generatorGroup.POST("generate", generatorApi.GenerateCode)
 		}
+
+		// Demo Router (ProTable Presentation)
+		demoApi := v1.DemoApi{}
+		demoGroup := privateGroup.Group("demo")
+		{
+			demoGroup.GET("list", demoApi.GetDemoList)
+			demoGroup.POST("", demoApi.CreateDemo)
+			demoGroup.PUT(":id", demoApi.UpdateDemo)
+			demoGroup.DELETE(":id", demoApi.DeleteDemo)
+		}
 	}
 
 	global.LV_LOG.Info("router register success")

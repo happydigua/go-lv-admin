@@ -18,6 +18,7 @@ func RegisterTables() {
 		&model.LvMenu{},
 		&model.LvOperationLog{},
 		&model.LvSetting{},
+		&model.LvDemo{},
 	)
 	if err != nil {
 		global.LV_LOG.Error("register table failed", zap.Error(err))
@@ -26,6 +27,7 @@ func RegisterTables() {
 	global.LV_LOG.Info("register table success")
 	InitData(db)
 	InitSettings(db)
+	InitDemoData(db)
 }
 
 func InitData(db *gorm.DB) {

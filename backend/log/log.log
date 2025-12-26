@@ -1,5 +1,6 @@
-2025-12-26T18:10:51.459+0800	info	core/migrate.go:26	register table success
-2025-12-26T18:10:51.461+0800	info	core/migrate.go:159	init settings success
-2025-12-26T18:10:51.467+0800	info	core/casbin.go:38	Casbin init success
-2025-12-26T18:10:51.468+0800	info	router/router.go:127	router register success
-2025-12-26T18:10:51.468+0800	info	server/main.go:41	Server exiting	{"addr": ":8888"}
+2025-12-26T18:28:56.434+0800	info	core/migrate.go:27	register table success
+2025-12-26T18:28:56.436+0800	info	core/migrate.go:161	init settings success
+2025-12-26T18:28:56.441+0800	info	core/init_demo.go:38	init demo data success
+2025-12-26T18:28:56.446+0800	info	core/casbin.go:38	Casbin init success
+2025-12-26T18:28:56.446+0800	info	router/router.go:137	router register success
+2025-12-26T18:28:56.446+0800	info	server/main.go:41	Server exiting	{"addr": ":8888"}
