@@ -1,0 +1,55 @@
+server:
+  port: 8888
+  mode: debug # debug, release, test
+
+database:
+  driver: mysql
+  source: "root:Lvbaolin11**@tcp(127.0.0.1:3306)/go_lv_vue_admin?charset=utf8mb4&parseTime=True&loc=Local"
+  log_mode: info
+
+jwt:
+  signing_key: "go-lv-vue-admin-secret"
+  expires_time: 7d # 7 days
+  buffer_time: 1d # buffer time for renewal
+
+zap:
+  level: info
+  format: console # console, json
+  prefix: "[Go-Lv-Vue-Admin]"
+  director: log
+  show_line: true
+  encode_level: LowercaseColorLevelEncoder
+  stacktrace_key: stacktrace
+  log_in_console: true                                                                                                                              
+
+cors:
+  mode: all # all, whitelist
+  whitelist:
+    - allow-origin: "*"
+      allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+      allow-headers: "*"
+
+# 存储配置
+storage:
+  driver: r2  # local | oss | cos| r2
+  local:
+    path: ./uploads
+    domain: http://localhost:8888
+  oss:
+    endpoint: oss-cn-hangzhou.aliyuncs.com
+    access_key_id: ""
+    access_key_secret: ""
+    bucket: ""
+    domain: ""
+  cos:
+    region: ap-guangzhou
+    secret_id: ""
+    secret_key: ""
+    bucket: ""
+    domain: ""
+  r2:
+    account_id: ""
+    access_key_id: ""
+    access_key_secret: ""
+    bucket: ""
+    domain: ""  # 自定义域名或 bucket.r2.dev
