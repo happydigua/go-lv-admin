@@ -3,6 +3,7 @@ package v1
 import (
 	"go-lv-vue-admin/internal/global"
 	"go-lv-vue-admin/internal/service"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -40,22 +41,29 @@ func (a *GeneratorApi) GetTableColumns(c *gin.Context) {
 	c.JSON(200, gin.H{"code": 0, "data": columns, "msg": "success"})
 }
 
-// GenerateCode 生成代码
+// GenerateCode 生成代码并写入文件
 func (a *GeneratorApi) GenerateCode(c *gin.Context) {
-	var config service.GenerateConfig
-	if err := c.ShouldBindJSON(&config); err != nil {
+	var req service.GenerateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"code": 7, "msg": err.Error()})
 		return
 	}
 
-	codes, err := generatorService.GenerateCode(config)
+	// 自动检测表是否有 deleted_at 字段
+	req.HasDeletedAt = generatorService.HasDeletedAtColumn(req.TableName)
+
+	// 获取项目根路径（假设在 backend 目录运行）
+	backendPath, _ := filepath.Abs(".")
+	frontendPath, _ := filepath.Abs("../frontend")
+
+	result, err := generatorService.WriteGeneratedFiles(req, backendPath, frontendPath)
 	if err != nil {
 		global.LV_LOG.Error("生成代码失败", zap.Error(err))
 		c.JSON(500, gin.H{"code": 7, "msg": "生成失败: " + err.Error()})
 		return
 	}
 
-	c.JSON(200, gin.H{"code": 0, "data": codes, "msg": "success"})
+	c.JSON(200, gin.H{"code": 0, "data": result, "msg": "success"})
 }
 
 // PreviewCode 预览生成的代码
@@ -65,6 +73,9 @@ func (a *GeneratorApi) PreviewCode(c *gin.Context) {
 		c.JSON(400, gin.H{"code": 7, "msg": err.Error()})
 		return
 	}
+
+	// 自动检测表是否有 deleted_at 字段
+	config.HasDeletedAt = generatorService.HasDeletedAtColumn(config.TableName)
 
 	codes, err := generatorService.GenerateCode(config)
 	if err != nil {

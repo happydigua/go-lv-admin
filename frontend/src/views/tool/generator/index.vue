@@ -28,6 +28,34 @@
           <n-form-item label="结构体名">
             <n-input v-model:value="config.structName" placeholder="如：Article (首字母大写)" />
           </n-form-item>
+          
+          <n-divider>菜单配置</n-divider>
+          
+          <n-form-item label="父菜单">
+            <n-tree-select
+              v-model:value="config.parentMenuId"
+              :options="menuOptions"
+              placeholder="选择父菜单（可选）"
+              clearable
+              default-expand-all
+            />
+          </n-form-item>
+          <n-form-item label="菜单图标">
+            <n-input v-model:value="config.menuIcon" placeholder="如：DocumentOutline">
+              <template #suffix>
+                <n-tooltip trigger="hover">
+                  <template #trigger>
+                    <n-icon><information-circle-outline /></n-icon>
+                  </template>
+                  使用 ionicons5 图标名称
+                </n-tooltip>
+              </template>
+            </n-input>
+          </n-form-item>
+          <n-form-item label="覆盖已存在">
+            <n-switch v-model:value="config.overwrite" />
+            <span style="margin-left: 8px; color: #999;">如果文件已存在，是否覆盖</span>
+          </n-form-item>
         </n-form>
 
         <n-divider>字段配置</n-divider>
@@ -40,7 +68,10 @@
 
         <n-space style="margin-top: 24px;">
           <n-button type="primary" @click="handlePreview" :loading="previewing">预览代码</n-button>
-          <n-button type="success" @click="handleGenerate" :loading="generating">生成代码</n-button>
+          <n-button type="success" @click="handleGenerate" :loading="generating">
+            <template #icon><n-icon><save-outline /></n-icon></template>
+            生成并写入文件
+          </n-button>
         </n-space>
       </n-tab-pane>
 
@@ -54,14 +85,41 @@
           </n-tab-pane>
         </n-tabs>
       </n-tab-pane>
+
+      <n-tab-pane name="result" tab="生成结果" :disabled="!generateResult">
+        <n-result
+          :status="generateResult?.success ? 'success' : 'error'"
+          :title="generateResult?.success ? '代码生成成功！' : '生成失败'"
+          :description="generateResult?.message"
+        >
+          <template #footer v-if="generateResult?.success">
+            <n-space vertical>
+              <n-alert type="info" title="已创建文件">
+                <n-ul>
+                  <n-li v-for="file in generateResult?.files" :key="file">{{ file }}</n-li>
+                </n-ul>
+              </n-alert>
+              <n-alert type="warning" title="后续步骤">
+                <n-ol>
+                  <n-li>重启后端服务以加载新路由</n-li>
+                  <n-li>刷新前端页面查看新菜单</n-li>
+                  <n-li>如需修改，可手动编辑生成的文件</n-li>
+                </n-ol>
+              </n-alert>
+            </n-space>
+          </template>
+        </n-result>
+      </n-tab-pane>
     </n-tabs>
   </n-card>
 </template>
 
 <script setup lang="ts">
 import { h, ref, reactive, onMounted } from 'vue';
-import { NButton, NSwitch, NSelect, useMessage } from 'naive-ui';
-import { getTables, getTableColumns, previewCode as previewCodeApi } from '@/api/generator';
+import { NButton, NSwitch, NSelect, NIcon, useMessage, useDialog } from 'naive-ui';
+import { InformationCircleOutline, SaveOutline } from '@vicons/ionicons5';
+import { getTables, getTableColumns, previewCode as previewCodeApi, generateCode } from '@/api/generator';
+import { getMenuList } from '@/api/system/menu';
 import hljs from 'highlight.js/lib/core';
 import go from 'highlight.js/lib/languages/go';
 import typescript from 'highlight.js/lib/languages/typescript';
@@ -72,6 +130,7 @@ hljs.registerLanguage('typescript', typescript);
 hljs.registerLanguage('vue', xml);
 
 const message = useMessage();
+const dialog = useDialog();
 
 const activeTab = ref('tables');
 const loadingTables = ref(false);
@@ -80,6 +139,8 @@ const generating = ref(false);
 const tables = ref<any[]>([]);
 const selectedTable = ref('');
 const previewCode = ref<Record<string, string> | null>(null);
+const generateResult = ref<any>(null);
+const menuOptions = ref<any[]>([]);
 
 const config = reactive({
   tableName: '',
@@ -87,6 +148,9 @@ const config = reactive({
   moduleName: '',
   packageName: '',
   structName: '',
+  parentMenuId: null as number | null,
+  menuIcon: 'DocumentOutline',
+  overwrite: false,
   columns: [] as any[]
 });
 
@@ -166,6 +230,24 @@ const columnConfigColumns = [
   }
 ];
 
+// 转换菜单为树形选项
+function convertMenuToOptions(menus: any[]): any[] {
+  return menus.map((menu: any) => ({
+    key: menu.ID,
+    label: menu.title,
+    children: menu.children?.length ? convertMenuToOptions(menu.children) : undefined
+  }));
+}
+
+const fetchMenus = async () => {
+  try {
+    const data: any = await getMenuList();
+    menuOptions.value = convertMenuToOptions(data || []);
+  } catch (error) {
+    console.error('Failed to fetch menus:', error);
+  }
+};
+
 const fetchTables = async () => {
   loadingTables.value = true;
   try {
@@ -199,7 +281,14 @@ const handleSelectTable = async (row: any) => {
 const handlePreview = async () => {
   previewing.value = true;
   try {
-    const data: any = await previewCodeApi(config);
+    const data: any = await previewCodeApi({
+      tableName: config.tableName,
+      tableComment: config.tableComment,
+      moduleName: config.moduleName,
+      packageName: config.packageName,
+      structName: config.structName,
+      columns: config.columns
+    });
     previewCode.value = data;
     activeTab.value = 'preview';
     message.success('代码预览成功');
@@ -211,8 +300,41 @@ const handlePreview = async () => {
 };
 
 const handleGenerate = () => {
-  message.info('代码已生成，请查看预览并复制到对应文件');
-  handlePreview();
+  dialog.warning({
+    title: '确认生成',
+    content: '将生成代码文件并写入到项目目录，同时创建菜单记录。确定继续？',
+    positiveText: '确定生成',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      generating.value = true;
+      try {
+        const result: any = await generateCode({
+          tableName: config.tableName,
+          tableComment: config.tableComment,
+          moduleName: config.moduleName,
+          packageName: config.packageName,
+          structName: config.structName,
+          columns: config.columns,
+          parentMenuId: config.parentMenuId || 0,
+          menuIcon: config.menuIcon || 'DocumentOutline',
+          overwrite: config.overwrite
+        });
+        generateResult.value = result;
+        activeTab.value = 'result';
+        message.success('代码生成成功！');
+      } catch (error: any) {
+        generateResult.value = {
+          success: false,
+          message: error.message || '生成失败',
+          files: []
+        };
+        activeTab.value = 'result';
+        message.error('生成失败');
+      } finally {
+        generating.value = false;
+      }
+    }
+  });
 };
 
 const copyCode = (code: string) => {
@@ -236,5 +358,7 @@ function removePrefix(s: string): string {
 
 onMounted(() => {
   fetchTables();
+  fetchMenus();
 });
 </script>
+
